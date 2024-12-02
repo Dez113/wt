@@ -114,6 +114,17 @@ func transaction(ctx context.Context, provider *ethclient.Client, pKey string) e
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	value := big.NewInt(100000000000000000) //  0.1 eth
+
+	balance, err := provider.BalanceAt(context.Background(), fromAddress, nil)
+	if err != nil {
+		return fmt.Errorf("provider.BalanceAt: %w", err)
+	}
+
+	if balance.Cmp(value) < 0 {
+		return fmt.Errorf("insufficient balance")
+	}
+
 	nonce, err := provider.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		return fmt.Errorf("ChainID: %v", err)
@@ -129,7 +140,7 @@ func transaction(ctx context.Context, provider *ethclient.Client, pKey string) e
 		GasPrice: gasPrice,
 		Gas:      uint64(21000), // minimal gas
 		To:       &toAddress,
-		Value:    big.NewInt(100000000000000000), // 0.5 eth
+		Value:    value,
 	}
 
 	chainID, err := provider.ChainID(ctx)
@@ -148,7 +159,7 @@ func transaction(ctx context.Context, provider *ethclient.Client, pKey string) e
 
 	err = provider.SendTransaction(context.Background(), signedTx)
 	if err != nil {
-		fmt.Errorf("provider.SendTransaction: %v", err)
+		return fmt.Errorf("provider.SendTransaction: %v", err)
 	}
 
 	fmt.Printf("tx sent: %s", signedTx.Hash().Hex())
